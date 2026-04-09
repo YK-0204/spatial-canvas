@@ -334,9 +334,6 @@ input[type=range]{width:100%;accent-color:var(--l4);cursor:pointer;height:3px}
   box-shadow:0 2px 12px rgba(0,0,0,.35);
 }
 #vbtn-free.active{background:rgba(100,110,160,.8)}
-#vbtn-xy.active{ background:linear-gradient(135deg,#c05a10,#f0933a)}
-#vbtn-zy.active{ background:linear-gradient(135deg,#1a6abf,#4a9eff)}
-#vbtn-zx.active{ background:linear-gradient(135deg,#288a48,#4fc96e)}
 #vbtn-flat.active{ background:linear-gradient(135deg,#6366f1,#a78bfa)}
 
 /* flatten ghost lines during flat view */
@@ -394,9 +391,6 @@ input[type=range]{width:100%;accent-color:var(--l4);cursor:pointer;height:3px}
 <!-- VIEW BUTTONS -->
 <div id="view-btns">
   <button class="vbtn active" id="vbtn-free">🌐 3D</button>
-  <button class="vbtn" id="vbtn-xy">📊 Category × Priority</button>
-  <button class="vbtn" id="vbtn-zy">📐 Depth × Priority</button>
-  <button class="vbtn" id="vbtn-zx">🗺 Depth × Category</button>
   <button class="vbtn" id="vbtn-flat">📋 Flat List</button>
 </div>
 
@@ -5322,7 +5316,7 @@ function setView(mode) {
 }
 
 function updateViewBtns() {
-  ['free','xy','zy','zx','flat'].forEach(id => {
+  ['free','flat'].forEach(id => {
     const btn = document.getElementById('vbtn-' + id);
     if (btn) btn.classList.toggle('active', id === currentView);
   });
@@ -5876,9 +5870,6 @@ document.getElementById('t-focus').addEventListener('click',()=>toggleFocusMode(
 document.getElementById('t-reset').addEventListener('click',()=>resetCamera());
 document.getElementById('t-undo').addEventListener('click',()=>undo());
 document.getElementById('vbtn-free').addEventListener('click',()=>setView('free'));
-document.getElementById('vbtn-xy').addEventListener('click',()=>setView('xy'));
-document.getElementById('vbtn-zy').addEventListener('click',()=>setView('zy'));
-document.getElementById('vbtn-zx').addEventListener('click',()=>setView('zx'));
 document.getElementById('vbtn-flat').addEventListener('click',()=>setView('flat'));
 document.getElementById('demo-btn').addEventListener('click',()=>openGuide());
 document.getElementById('export-btn').addEventListener('click',()=>openGhModal());
@@ -5925,10 +5916,7 @@ document.addEventListener('keydown',e=>{
   if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
   if((e.ctrlKey||e.metaKey) && (e.key==='z'||e.key==='Z')){ e.preventDefault(); undo(); return; }
   if(e.key==='1') setView('free');
-  if(e.key==='2') setView('xy');
-  if(e.key==='3') setView('zy');
-  if(e.key==='4') setView('zx');
-  if(e.key==='5') setView('flat');
+  if(e.key==='2') setView('flat');
   if(e.key==='n'||e.key==='N') addNoteAtCamera();
   if(e.key==='d'||e.key==='D') setMode(APP.mode==='draw'?'select':'draw');
   if(e.key==='f'||e.key==='F') toggleFocusMode();
