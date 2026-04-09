@@ -337,6 +337,7 @@ input[type=range]{width:100%;accent-color:var(--l4);cursor:pointer;height:3px}
 #vbtn-xy.active{ background:linear-gradient(135deg,#c05a10,#f0933a)}
 #vbtn-zy.active{ background:linear-gradient(135deg,#1a6abf,#4a9eff)}
 #vbtn-zx.active{ background:linear-gradient(135deg,#288a48,#4fc96e)}
+#vbtn-flat.active{ background:linear-gradient(135deg,#6366f1,#a78bfa)}
 
 /* flatten ghost lines during flat view */
 .flat-view-active .note-ghost{opacity:0.15}
@@ -396,6 +397,7 @@ input[type=range]{width:100%;accent-color:var(--l4);cursor:pointer;height:3px}
   <button class="vbtn" id="vbtn-xy">📊 Category × Priority</button>
   <button class="vbtn" id="vbtn-zy">📐 Depth × Priority</button>
   <button class="vbtn" id="vbtn-zx">🗺 Depth × Category</button>
+  <button class="vbtn" id="vbtn-flat">📋 Flat List</button>
 </div>
 
 <!-- LAYER PANEL -->
@@ -4650,6 +4652,7 @@ function viewColor(n, mode) {
   switch(mode){
     case 'xy': case 'zy': return (PRIORITIES[n.data?.priority] || PRIORITIES.should).color;
     case 'zx': return (CATEGORIES[n.data?.category] || CATEGORIES.ux).color;
+    case 'flat': return (CATEGORIES[n.data?.category] || CATEGORIES.ux).color;
     default: return null;
   }
 }
@@ -4921,6 +4924,18 @@ function flatPos(noteObj, mode) {
     case 'zx':
       // X=category, Y=0 (collapse priority), Z=layer.z
       return { x: cat.x + jx, y: 1.8, z: layer.z + (noteObj.id%3-1)*0.3 };
+    case 'flat': {
+      // Count notes in same category with lower id to get row index
+      const sameCat = APP.notes.filter(nn => (nn.data?.category || 'ux') === (noteObj.data?.category || 'ux'));
+      const idx = sameCat.indexOf(noteObj);
+      const row = idx >= 0 ? idx : 0;
+      const totalRows = sameCat.length;
+      // Stack vertically: top starts at y=7, each note 2.4 units apart
+      const startY = 7;
+      const spacing = 2.4;
+      const y = startY - row * spacing;
+      return { x: cat.x, y: y, z: 0 };
+    }
     default:
       return null;
   }
@@ -4935,6 +4950,7 @@ function groupKey(noteObj, mode) {
     case 'xy': return `${cat}__${pri}`;          // same category + priority
     case 'zy': return `${layer}__${pri}`;        // same depth + priority
     case 'zx': return `${cat}__${layer}`;        // same category + depth
+    case 'flat': return `flat__${noteObj.id}`;  // unique key = no stacking
     default:   return null;
   }
 }
@@ -5100,6 +5116,7 @@ function targetRotation(mode){
     case 'xy':  return { x: 0,            y: 0,           z: 0 };
     case 'zy':  return { x: 0,            y: Math.PI/2,   z: 0 };
     case 'zx':  return { x: -Math.PI/2,   y: 0,           z: 0 };
+    case 'flat': return { x: 0, y: 0, z: 0 };  // face toward +Z like xy view
     default:    return null;
   }
 }
@@ -5138,13 +5155,14 @@ function enterFlatView(mode) {
     xy: { pos: new THREE.Vector3(0, 4, 32),  look: new THREE.Vector3(0, 3, 0) },
     zy: { pos: new THREE.Vector3(28, 4, 0),  look: new THREE.Vector3(0, 3, 0) },
     zx: { pos: new THREE.Vector3(0, 34, 0),  look: new THREE.Vector3(0, 0, 0) },
+    flat: { pos: new THREE.Vector3(0, 2, 38),  look: new THREE.Vector3(0, 2, 0) },
   };
   const cam = camMap[mode];
   if (cam) flyTo(cam.pos, cam.look, 1.1);
 
   // Activate fill light: position slightly *in front of* camera so it shines onto card faces
   // Camera looks toward origin; light placed between camera and cards
-  const fillPos = { xy:[0,4,20], zy:[18,4,0], zx:[0,22,0] }[mode] || [0,4,20];
+  const fillPos = { xy:[0,4,20], zy:[18,4,0], zx:[0,22,0], flat:[0,2,26] }[mode] || [0,4,20];
   fillLight.position.set(...fillPos);
   fillLight.target.position.set(0, 2, 0);
   scene.add(fillLight.target);
@@ -5268,11 +5286,12 @@ function setView(mode) {
         xy: { pos: new THREE.Vector3(0, 4, 32),  look: new THREE.Vector3(0, 3, 0) },
         zy: { pos: new THREE.Vector3(28, 4, 0),  look: new THREE.Vector3(0, 3, 0) },
         zx: { pos: new THREE.Vector3(0, 34, 0),  look: new THREE.Vector3(0, 0, 0) },
+        flat: { pos: new THREE.Vector3(0, 2, 38),  look: new THREE.Vector3(0, 2, 0) },
       };
       const cam = camMap[mode];
       if (cam) flyTo(cam.pos, cam.look, 0.9);
       // Update fill light for new camera direction
-      const fp2 = { xy:[0,4,20], zy:[18,4,0], zx:[0,22,0] }[mode] || [0,4,20];
+      const fp2 = { xy:[0,4,20], zy:[18,4,0], zx:[0,22,0], flat:[0,2,26] }[mode] || [0,4,20];
       fillLight.position.set(...fp2);
       fillLight.target.position.set(0, 2, 0);
       fillLight.intensity = 2.8;
@@ -5296,13 +5315,14 @@ function setView(mode) {
     xy: 'Category × Priority ビュー — X:カテゴリー / Y:重要度',
     zy: 'Depth × Priority ビュー — Z:抽象度 / Y:重要度',
     zx: 'Depth × Category ビュー — Z:抽象度 / X:カテゴリー',
+    flat: 'Flat List ビュー — カテゴリごとに全ノート一覧',
     free: '3Dビューに戻りました',
   };
   toast(hints[mode] || '', 'info');
 }
 
 function updateViewBtns() {
-  ['free','xy','zy','zx'].forEach(id => {
+  ['free','xy','zy','zx','flat'].forEach(id => {
     const btn = document.getElementById('vbtn-' + id);
     if (btn) btn.classList.toggle('active', id === currentView);
   });
@@ -5859,6 +5879,7 @@ document.getElementById('vbtn-free').addEventListener('click',()=>setView('free'
 document.getElementById('vbtn-xy').addEventListener('click',()=>setView('xy'));
 document.getElementById('vbtn-zy').addEventListener('click',()=>setView('zy'));
 document.getElementById('vbtn-zx').addEventListener('click',()=>setView('zx'));
+document.getElementById('vbtn-flat').addEventListener('click',()=>setView('flat'));
 document.getElementById('demo-btn').addEventListener('click',()=>openGuide());
 document.getElementById('export-btn').addEventListener('click',()=>openGhModal());
 document.getElementById('add-layer-btn').addEventListener('click',()=>addLayer());
@@ -5907,6 +5928,7 @@ document.addEventListener('keydown',e=>{
   if(e.key==='2') setView('xy');
   if(e.key==='3') setView('zy');
   if(e.key==='4') setView('zx');
+  if(e.key==='5') setView('flat');
   if(e.key==='n'||e.key==='N') addNoteAtCamera();
   if(e.key==='d'||e.key==='D') setMode(APP.mode==='draw'?'select':'draw');
   if(e.key==='f'||e.key==='F') toggleFocusMode();
